@@ -23,7 +23,7 @@
           mv backup-job.bash "$out/bin/backup-job"
           mv cli_entrypoint.bash "$out/bin/burenix"
           # Cli for manual backup and restore triggering
-          cp -r "cli/" "$out/cli"
+          cp -r "cli/" "$out"
           # mark some things as executable
           chmod +x "$out/bin/"{burenix,backup-job}
         '';
