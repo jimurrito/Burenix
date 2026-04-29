@@ -165,7 +165,7 @@
           config = mkMerge (
             mapAttrsToList (
               name: dataSource:
-              mkIf (burenix-nixops.enable) {
+              {#mkIf (burenix-nixops.enable) {
                 #
                 environment = {
                   # Imports package and runs the install steps
