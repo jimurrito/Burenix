@@ -159,24 +159,26 @@
           };
           #
           #
+          # mkMerge (mapAttrsToList (mkIf {...}) var);
+          #
           # config to be implemented via the `options`
-          config = mkIf (burenix-nixops.enable) {
-            #
-            environment = {
-              # Imports package and runs the install steps
-              systemPackages = [
-                # This only imports `burenix` as `backup-job` is not the main package
-                # Can be used to point to `backup-job` if need-be.
-                # getExe will point to `burenix`
-                pkg-store
-                pkgs.pigz
-              ];
-              #
-              # easily accessible configs/scripts for the datasources
-              etc = mkMerge (
-                mapAttrsToList (
-                  name: dataSource:
-                  mkif (dataSource.enable) {
+          config = mkMerge (
+            mapAttrsToList (
+              name: dataSource:
+              mkIf (burenix-nixops.enable) {
+                #
+                environment = {
+                  # Imports package and runs the install steps
+                  systemPackages = [
+                    # This only imports `burenix` as `backup-job` is not the main package
+                    # Can be used to point to `backup-job` if need-be.
+                    # getExe will point to `burenix`
+                    pkg-store
+                    pkgs.pigz
+                  ];
+                  #
+                  # easily accessible configs/scripts for the datasources
+                  etc = mkIf (dataSource.enable) {
                     # path to the backup key
                     "burenix/conf/env.conf" = {
                       enable = true;
@@ -217,19 +219,13 @@
                       source = dataSource.postRunScript.source;
                     };
                     #
-                  }
-                ) burenix-nixops.backups
-              );
-              #
-            };
-            #
-            #
-            #
-            # systemd service
-            systemd = mkMerge (
-              mapAttrsToList (
-                name: dataSource:
-                mkif (dataSource.enable) {
+                  };
+                  #
+                };
+                #
+                #
+                # systemd service
+                systemd = mkIf (dataSource.enable) {
                   # Data source systemd service
                   services."backup-${name}" = {
                     enable = true;
@@ -283,10 +279,11 @@
                     };
                   };
                   #
-                }
-              ) burenix-nixops.backups
-            );
-          };
+                };
+              }
+              #
+            ) burenix-nixops.backups
+          );
         };
     };
 }
