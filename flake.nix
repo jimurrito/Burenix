@@ -1,5 +1,5 @@
 {
-  description = "backup and restore system for nix";
+  description = "Burenix backup and restore system for nix";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
@@ -49,8 +49,8 @@
           # Options for services overlay
           options.services.burenix = {
             default = { };
-            enable = mkEnableOption "The backup-restore module entirely";
-            enableCLI = mkEnableOption "The backup-restore CLI";
+            enable = mkEnableOption "The burenix module entirely";
+            enableCLI = mkEnableOption "The burenix CLI";
             # Compression Key file path
             keyPath = mkOption {
               type = types.str;
