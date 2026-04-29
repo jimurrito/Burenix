@@ -220,7 +220,7 @@
                     };
                     #
                   }
-                )
+                ) burenix-nixops.backups
               );
               #
             };
@@ -281,7 +281,7 @@
                   };
                   #
                 }
-              )
+              ) burenix-nixops.backups
             );
           };
         };
