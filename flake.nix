@@ -237,9 +237,7 @@
                       Group = dataSource.group;
                       # Pre-Execution script for the datasource
                       ExecStartPre = optionalString (dataSource.preRunScript.enable) ''
-                        ${lib.getExe pkgs.bash} ${
-                          config.environment.etc."burenix/scripts/${name}.pre.bash".source
-                        }  ${dataSource.preRunScript.arguments}
+                        ${lib.getExe pkgs.bash} ${dataSource.preRunScript.source} ${dataSource.preRunScript.arguments}
                       '';
                       # ExecStart runs after all ExecStartPre commands have finished successfully
                       ExecStart = ''
@@ -256,9 +254,7 @@
                       '';
                       # Ran after all 'ExecStart' commands have finished successfully.
                       ExecStartPost = optionalString (dataSource.postRunScript.enable) ''
-                        ${lib.getExe pkgs.bash} ${
-                          config.environment.etc."burenix/scripts/${name}.post.bash".source
-                        } ${dataSource.postRunScript.arguments}
+                        ${lib.getExe pkgs.bash} ${dataSource.postRunScript.source} ${dataSource.postRunScript.arguments}
                       '';
                     };
                     path = with pkgs; [
