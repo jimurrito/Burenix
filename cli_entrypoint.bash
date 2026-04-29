@@ -14,8 +14,8 @@
 # CLI_PATH => path to cli scripts
 
 # Mappings for entrypoint input args
-CLI_CMD="${2}"
-CLI_ARGS="${@:3}"
+CLI_CMD="${1}"
+CLI_ARGS="${@:2}"
 
 case "${CLI_CMD}" in
     restore | backup | ls)
