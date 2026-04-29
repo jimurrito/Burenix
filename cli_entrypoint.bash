@@ -21,10 +21,12 @@ case "${CLI_CMD}" in
     restore | backup | ls)
         ${CLI_PATH}/${CLI_CMD}.bash "${KEY_PATH}" ${CLI_ARGS}
         ;;
+    help)
+        ${CLI_PATH}/help.bash
+        ;;
     *)
-        echo "No sub-command provided."
-        echo "burenix restore|backup|ls"
-        echo "Please use 'burenix help' to see the possible options."
+        echo "No valid sub-command provided."
+        ${CLI_PATH}/help.bash
         exit 1
         ;;
 esac
