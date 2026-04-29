@@ -25,7 +25,7 @@
           # Cli for manual backup and restore triggering
           cp -r "cli/" "$out"
           # mark some things as executable
-          chmod +x "$out/bin/"{burenix,backup-job}
+          chmod +x "$out/bin/"{burenix,backup-job} "$out/cli/*"
         '';
       };
       #
