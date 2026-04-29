@@ -50,7 +50,6 @@
           options.services.burenix = {
             default = { };
             enable = mkEnableOption "The burenix module entirely";
-            enableCLI = mkEnableOption "The burenix CLI";
             # Compression Key file path
             keyPath = mkOption {
               type = types.str;
