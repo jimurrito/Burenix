@@ -9,7 +9,7 @@
 #
 
 # Import vars from file
-. /etc/burenix/conf/env.conf
+#. /etc/burenix/conf/env.conf
 # KEY_PATH => path to key file
 # CLI_PATH => path to cli scripts
 
@@ -21,9 +21,10 @@ case "${CLI_CMD}" in
     restore | backup | ls)
         ${CLI_PATH}/${CLI_CMD}.bash "${KEY_PATH}" ${CLI_ARGS}
         ;;
-    ?)
-        echo "Invalid command [${CLI_CMD}] provided."
-        echo "Please use 'bure help' to see the possible options."
+    *)
+        echo "No sub-command provided."
+        echo "burenix restore|backup|ls"
+        echo "Please use 'burenix help' to see the possible options."
         exit 1
         ;;
 esac
