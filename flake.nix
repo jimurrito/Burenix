@@ -20,7 +20,7 @@
         #
         installPhase = ''
           mkdir -p "$out/"{bin,cli}
-          mv backup.bash "$out/bin/backup-job"
+          mv backup-job.bash "$out/bin/backup-job"
           mv cli_entrypoint.bash "$out/bin/burenix"
           # Cli for manual backup and restore triggering
           cp -r "cli/" "$out/cli"
