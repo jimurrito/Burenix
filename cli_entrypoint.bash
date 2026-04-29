@@ -9,7 +9,7 @@
 #
 
 # Import vars from file
-#. /etc/burenix/conf/env.conf
+. /etc/burenix/conf/env.conf
 # KEY_PATH => path to key file
 # CLI_PATH => path to cli scripts
 
