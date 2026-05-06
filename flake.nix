@@ -22,6 +22,10 @@
         with lib;
         {
           #
+          imports = [
+            ./cli.nix
+          ];
+          #
           #
           # Options for services overlay
           options.services.burenix = {
@@ -137,10 +141,6 @@
           #
           # config to be implemented via the `options`
           config = mkIf (burenix-nixops.enable) {
-            #
-            imports = [
-              ./cli.nix
-            ];
             #
             environment = {
               # Imports package and runs the install steps
