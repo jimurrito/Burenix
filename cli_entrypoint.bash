@@ -8,14 +8,11 @@
 # Acts as a root for the cli
 #
 
-# Import vars from file
-. /etc/burenix/conf/env.conf
-# KEY_PATH => path to key file
-# CLI_PATH => path to cli scripts
-
 # Mappings for entrypoint input args
-CLI_CMD="${1}"
-CLI_ARGS="${@:2}"
+KEY_PATH="${1}" # passed in alias invocation
+CLI_CMD="${2}"
+CLI_ARGS="${@:3}"
+CLI_PATH="/etc/burenix/cli"
 
 case "${CLI_CMD}" in
     restore | backup | ls)

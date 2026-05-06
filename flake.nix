@@ -5,29 +5,12 @@
   };
   #
   outputs =
-    { self, nixpkgs }:
+    { ... }:
     let
-      system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
+      #system = "x86_64-linux";
+      #pkgs = nixpkgs.legacyPackages.${system};
     in
     {
-      packages.${system}.default = pkgs.stdenv.mkDerivation {
-        pname = "burenix";
-        meta.mainProgram = "burenix";
-        version = "0.1.0";
-        src = ./.;
-        dontBuild = true;
-        #
-        installPhase = ''
-          mkdir -p "$out/"{bin,cli}
-          mv backup-job.bash "$out/bin/backup-job"
-          mv cli_entrypoint.bash "$out/bin/burenix"
-          # Cli for manual backup and restore triggering
-          cp -r "cli/" "$out"
-          # mark some things as executable
-          chmod -R +x "$out/bin/"{burenix,backup-job} "$out/cli/"
-        '';
-      };
       #
       # <PACKAGE + service via Options>
       nixosModules.default =
@@ -38,8 +21,6 @@
           ...
         }:
         let
-          pkgsystem = pkgs.stdenv.hostPlatform.system;
-          pkg-store = self.packages.${pkgsystem}.default;
           burenix-nixops = config.services.burenix;
         in
         with lib;
@@ -158,18 +139,16 @@
           };
           #
           #
-          # mkMerge (mapAttrsToList (mkIf {...}) var);
-          #
           # config to be implemented via the `options`
           config = mkIf (burenix-nixops.enable) {
+            #
+            imports = [
+              ./cli.nix
+            ];
             #
             environment = {
               # Imports package and runs the install steps
               systemPackages = [
-                # This only imports `burenix` as `backup-job` is not the main package
-                # Can be used to point to `backup-job` if need-be.
-                # getExe will point to `burenix`
-                pkg-store
                 pkgs.pigz
               ];
               #
@@ -178,15 +157,6 @@
                 mapAttrsToList (
                   name: dataSource:
                   mkIf (dataSource.enable) {
-                    # path to the backup key
-                    "burenix/conf/env.conf" = {
-                      enable = true;
-                      mode = "0444";
-                      text = ''
-                        KEY_PATH="${burenix-nixops.keyPath}"
-                        CLI_PATH="${pkg-store}/cli"
-                      '';
-                    };
                     # data source source-paths
                     "burenix/conf/${name}.src.conf" = {
                       enable = dataSource.enable;
@@ -205,83 +175,80 @@
                       mode = "0444";
                       text = concatStringsSep " " dataSource.targetDirs;
                     };
-                    # Pre run script
-                    "burenix/scripts/${name}.pre.bash" = {
-                      enable = dataSource.preRunScript.enable;
-                      mode = "0444";
-                      source = dataSource.preRunScript.source;
+                  }
+                ) burenix-nixops.backups
+              );
+            };
+            #
+            # Burenix CLI
+            services.burenix-cli = {
+              enable = true;
+              keyPath = burenix-nixops.keyPath;
+            };
+            #
+            # systemd service
+            systemd =
+              let
+                bash = getExe pkgs.bash;
+              in
+              mkMerge (
+                mapAttrsToList (
+                  name: dataSource:
+                  mkIf (dataSource.enable) {
+                    # Data source systemd service
+                    services."backup-${name}" = {
+                      enable = true;
+                      description = "Burenix backup job for data source [${name}]";
+                      restartIfChanged = true;
+                      serviceConfig = {
+                        Type = "oneshot";
+                        User = dataSource.user;
+                        Group = dataSource.group;
+                        # Pre-Execution script for the datasource
+                        ExecStartPre = optionalString (dataSource.preRunScript.enable) ''
+                          ${bash} ${dataSource.preRunScript.source} ${dataSource.preRunScript.arguments}
+                        '';
+                        # ExecStart runs after all ExecStartPre commands have finished successfully
+                        ExecStart = ''
+                          ${bash} ${./backup-job.bash} \
+                            -n ${name} \
+                            -d "${(concatStringsSep " " dataSource.sourceDirs)}" \
+                            -t "${(concatStringsSep " " dataSource.targetDirs)}" \
+                            -r ${toString dataSource.rolloverIntervalDays} \
+                            -k ${burenix-nixops.keyPath} \
+                            -o ${dataSource.tempDir} \
+                            ${optionalString (dataSource.usePigz) "-p"} \
+                            ${optionalString (dataSource.useSSH) "-s"} \
+                            ${optionalString (dataSource.noEncrypt) "-x"}
+                        '';
+                        # Ran after all 'ExecStart' commands have finished successfully.
+                        ExecStartPost = optionalString (dataSource.postRunScript.enable) ''
+                          ${bash} ${dataSource.preRunScript.source} ${dataSource.postRunScript.arguments}
+                        '';
+                      };
+                      path = with pkgs; [
+                        gnutar
+                        gzip
+                        pigz
+                        openssh # for scp
+                        gnupg # for gpg
+                      ];
                     };
-                    # Post run script
-                    "burenix/scripts/${name}.post.bash" = {
-                      enable = dataSource.postRunScript.enable;
-                      mode = "0444";
-                      source = dataSource.postRunScript.source;
+                    # data source systemd service timer
+                    timers."backup-${name}" = {
+                      enable = true;
+                      description = "Triggers backup for data source [${name}] @ [${dataSource.backupTime}]";
+                      wantedBy = [ "timers.target" ];
+                      timerConfig = {
+                        OnCalendar = dataSource.backupTime;
+                      };
                     };
                     #
                   }
                 ) burenix-nixops.backups
               );
-              #
-            };
             #
             #
-            # systemd service
-            systemd = mkMerge (
-              mapAttrsToList (
-                name: dataSource:
-                mkIf (dataSource.enable) {
-                  # Data source systemd service
-                  services."backup-${name}" = {
-                    enable = true;
-                    description = "Burenix backup job for data source [${name}]";
-                    restartIfChanged = true;
-                    serviceConfig = {
-                      Type = "oneshot";
-                      User = dataSource.user;
-                      Group = dataSource.group;
-                      # Pre-Execution script for the datasource
-                      ExecStartPre = optionalString (dataSource.preRunScript.enable) ''
-                        ${lib.getExe pkgs.bash} ${dataSource.preRunScript.source} ${dataSource.preRunScript.arguments}
-                      '';
-                      # ExecStart runs after all ExecStartPre commands have finished successfully
-                      ExecStart = ''
-                        ${pkg-store}/bin/backup-job \
-                          -n ${name} \
-                          -d "${(concatStringsSep " " dataSource.sourceDirs)}" \
-                          -t "${(concatStringsSep " " dataSource.targetDirs)}" \
-                          -r ${toString dataSource.rolloverIntervalDays} \
-                          -k ${burenix-nixops.keyPath} \
-                          -o ${dataSource.tempDir} \
-                          ${optionalString (dataSource.usePigz) "-p"} \
-                          ${optionalString (dataSource.useSSH) "-s"} \
-                          ${optionalString (dataSource.noEncrypt) "-x"}
-                      '';
-                      # Ran after all 'ExecStart' commands have finished successfully.
-                      ExecStartPost = optionalString (dataSource.postRunScript.enable) ''
-                        ${lib.getExe pkgs.bash} ${dataSource.postRunScript.source} ${dataSource.postRunScript.arguments}
-                      '';
-                    };
-                    path = with pkgs; [
-                      gnutar
-                      gzip
-                      pigz
-                      openssh # for scp
-                      gnupg # for gpg
-                    ];
-                  };
-                  # data source systemd service timer
-                  timers."backup-${name}" = {
-                    enable = true;
-                    description = "Triggers backup for data source [${name}] @ [${dataSource.backupTime}]";
-                    wantedBy = [ "timers.target" ];
-                    timerConfig = {
-                      OnCalendar = dataSource.backupTime;
-                    };
-                  };
-                  #
-                }
-              ) burenix-nixops.backups
-            );
           };
         };
     };
