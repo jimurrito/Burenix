@@ -1,14 +1,20 @@
 {
   description = "Burenix backup and restore system for nix";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    test-vm.url = "github:jimurrito/nixos-test-vm";
   };
   #
   outputs =
-    { ... }:
+    {
+      self,
+      nixpkgs,
+      test-vm,
+      ...
+    }:
     {
       #
-      # <PACKAGE + service via Options>
+      #
       nixosModules.default =
         {
           config,
@@ -247,5 +253,50 @@
             #
           };
         };
+      #
+      #
+      # TestVM
+      nixosConfigurations =
+        let
+          testConfig =
+            { ... }:
+            {
+              services.burenix = {
+                enable = true;
+                keyPath = "/root/backup-key";
+                backups =
+                  let
+                    cf = {
+                      enable = true;
+                      sourceDirs = [ "/var/log" ];
+                      targetDirs = [
+                        "/var/burenix-backup"
+                      ];
+                      backupTime = "Tue, 03:00:00";
+                    };
+                  in
+                  {
+                    varlog_encrypted = cf;
+                    varlog = cf // {
+                      noEncrypt = true;
+                    };
+                  };
+              };
+            };
+        in
+        {
+          test-vm = nixpkgs.lib.nixosSystem {
+            system = "x86_64-linux";
+            modules = [
+              test-vm.baselineConfig
+              # test config
+              self.nixosModules.default
+              testConfig
+            ];
+          };
+        };
+      #
+      #
     };
+  #
 }

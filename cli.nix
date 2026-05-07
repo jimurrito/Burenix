@@ -1,4 +1,4 @@
-{ lib, ... }:
+{ config, lib, pkgs, ... }:
 with lib;
 {
   #
@@ -16,7 +16,7 @@ with lib;
   #
   config =
     let
-      cli-nixops = services.burenix-cli;
+      cli-nixops = config.services.burenix-cli;
       bash = getExe pkgs.bash;
     in
     mkIf (cli-nixops.enable) {
@@ -34,8 +34,8 @@ with lib;
             (s: {
               "burenix/cli/${s}.bash" = {
                 enable = true;
-                mode = "0111";
-                text = ./cli/${s}.bash;
+                mode = "0555";
+                source = ./cli/${s}.bash;
               };
             })
             [

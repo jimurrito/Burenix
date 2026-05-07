@@ -1,0 +1,32 @@
+TODO
+
+[ ] Bug where similarly named data sources will show each other's snapshots
+        Data Source: [varlog_encrypted]
+    
+        Backup Target: [/var/burenix-backup]
+        Available Snapshots
+        -> backup-varlog_encrypted-2026-05-06T1751.tar.gz.gpg
+        
+        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        
+        Data Source: [varlog]
+        
+        Backup Target: [/var/burenix-backup]
+        Available Snapshots
+        -> backup-varlog-2026-05-06T1750.tar.gz <------(This here)
+        -> backup-varlog_encrypted-2026-05-06T1751.tar.gz.gpg
+
+[ ] Root unable to access burenix-cli AND normal users do not have permissions to start systemd services 
+        [james@test-vm:~]$ burenix-cli backup
+        [0] - varlog_encrypted
+        [1] - varlog
+        Select a data source [0-1]: 1
+        
+        Are you sure you want to start the backup of this Data Source [varlog]?
+        [y/n]: y
+        
+        Backup started...
+        Run 'journalctl -u backup-varlog.service --follow' to track the progress.
+        
+        [james@test-vm:~]$ Failed to restart backup-varlog.service: Access denied <----(This here)
+        See system logs and 'systemctl status backup-varlog.service' for details.
