@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 with lib;
 {
   #
@@ -17,25 +22,29 @@ with lib;
   config =
     let
       cli-nixops = config.services.burenix-cli;
-      bash = getExe pkgs.bash;
     in
     mkIf (cli-nixops.enable) {
       #
       environment = {
-        #
-        shellAliases = {
-          # have to execute in bash as file imported using types.path only have read only file modes.
-          burenix-cli = "${bash} ${./cli_entrypoint.bash} ${cli-nixops.keyPath}";
-        };
+        shellAliases =
+          let
+            script = pkgs.runCommand "burenix-cli" { } ''
+              cp ${./cli_entrypoint.bash} $out
+              chmod 0555 $out
+            '';
+          in
+          {
+            burenix-cli = "${script} ${cli-nixops.keyPath}";
+          };
         #
         # Imports all the cli sub-command scripts
         etc = mkMerge (
           map
-            (s: {
-              "burenix/cli/${s}.bash" = {
+            (cmd: {
+              "burenix/cli/${cmd}" = {
                 enable = true;
                 mode = "0555";
-                source = ./cli/${s}.bash;
+                source = ./cli/${cmd}.bash;
               };
             })
             [

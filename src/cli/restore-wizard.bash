@@ -150,14 +150,14 @@ TEMP_SNAP_PATH="${TEMP_DIR}/$(basename ${SELECT_DS_SNAP})"
 echo -e "\nStarting restore. Do not stop this operation or risk corruption.\n"
 
 #
-# Decrypt or not 
+# Decrypt or not
 if [[ "${SELECT_DS_SNAP}" =~ ".gpg" ]]; then
     echo -e "Decrypting backup snapshot using backup key @ [${KEY_PATH}]...\n"
-    # we need to decrypt 
+    # we need to decrypt
     gpg --batch --passphrase-file "${KEY_PATH}" -d "${TEMP_SNAP_PATH}" | tar --use-compress-program=pigz -C / -xf -
 else
     # no decryption needed
-    tar --use-compress-program=pigz -C / -xf "${TEMP_SNAP_PATH}"
+        tar --use-compress-program=pigz -C / -xf "${TEMP_SNAP_PATH}"
 fi
 
 echo -e "Restore completed!"

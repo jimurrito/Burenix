@@ -3,7 +3,8 @@
 # Backup script
 #
 
-# Pre-initialize targets list
+# Pre-initialize lists
+SOURCES=()
 TARGETS=()
 
 # Assigns CLI arguments
@@ -15,7 +16,7 @@ while getopts "n:d:t:r:k:o:psx" opt; do
             ;;
         # Data source path
         d)
-            SOURCES="${OPTARG}"
+            SOURCES+=("${OPTARG}")
             ;;
         # target paths
         t)
@@ -65,36 +66,53 @@ echo "USE_PIGZ = ${USE_PIGZ}"
 echo "USE_SSH = ${USE_SSH}"
 echo "NO_ENCRYPT = ${NO_ENCRYPT}"
 
-# compression service
+#
+#  compression service
 if [[ -n "${USE_PIGZ}" ]]; then COMPRESSION_ARG="--use-compress-program=pigz";
 else COMPRESSION_ARG="-z"; fi
-# Copy program
+#
+#  Copy program
 if [[ -n "${USE_SSH}" ]]; then COPY_BIN="scp"; else COPY_BIN="cp -fr"; fi
 #
+# Encryption file ext
+if [[ -n "$NO_ENCRYPT" ]]; then E_EXT=".gpg"; fi
+#
+# greeting
+echo "Starting backup: [ ${NAME} ] => [ ${TARGETS} ]"
+#
+# Create temp backup path for compression
+BACKUP_FILE_TEMP="${TEMP_DIR}/burenix-${NAME}-$(date +"%Y-%m-%dT%H%M").tar.gz${E_EXT}"
+#
+# perform compression/encryption
 if [[ "$NO_ENCRYPT" ]]; then
     # Non encrypted
-    BACKUP_FILE_PATH="${TEMP_DIR}/backup-${NAME}-$(date +"%Y-%m-%dT%H%M").tar.gz"
-    echo "Compressing data source(s) [${SOURCES}] to [${BACKUP_FILE_PATH}] and using no encryption"
-    tar "${COMPRESSION_ARG}" -cf "${BACKUP_FILE_PATH}" ${SOURCES}
+    echo "Compressing data source(s) [${SOURCES}] to temporary directory [${BACKUP_FILE_TEMP}]"
+    tar "${COMPRESSION_ARG}" -cf "${BACKUP_FILE_TEMP}" "${SOURCES}"
 else
     # Compress and encrypt data
-    BACKUP_FILE_PATH="${TEMP_DIR}/backup-${NAME}-$(date +"%Y-%m-%dT%H%M").tar.gz.gpg"
-    echo "Compressing data source(s) [${SOURCES}] to [${BACKUP_FILE_PATH}] and encrypting using key @ [${KEY_PATH}]"
+    echo "Compressing and Encrypting data source(s) [${SOURCES}] to temporary directory [${BACKUP_FILE_TEMP}]"
     # use '-' for tar output file name '-f' so it will pass the output to gpg for encryption.
-    tar "${COMPRESSION_ARG}" -cf - ${SOURCES} | gpg --batch --passphrase-file ${KEY_PATH} -c  > "${BACKUP_FILE_PATH}"
+    tar "${COMPRESSION_ARG}" -cf - "${SOURCES}" | gpg --batch --passphrase-file ${KEY_PATH} -c  > "${BACKUP_FILE_TEMP}"
 fi
-
+#
 # Copy file to target locations
-echo "Coping backup data [${BACKUP_FILE_PATH}] to [${#TARGETS[@]}] target(s)."
+echo "Coping backup data [${BACKUP_FILE_TEMP}] to [${#TARGETS[@]}] target(s)."
 for target in ${TARGETS[@]}; do
-    echo "Ensuring target dir exists..."
+    echo "=> [${target}]"
     mkdir -p "${target}"
-    echo "[${BACKUP_FILE_PATH}] -> [${target}]"
-    ${COPY_BIN} "${BACKUP_FILE_PATH}" ${target}
-    echo "Cleaning up old archives over [${ROLLOVER}] days old @ [${target}]"
-    find "${target}/." -mtime "+${ROLLOVER}" -delete
+    # Copy compressed backup to destination target
+    echo "[${BACKUP_FILE_TEMP}] -> [${target}]"
+    ${COPY_BIN} "${BACKUP_FILE_TEMP}" ${target}
+    # rollover
+    if [[ -n ${ROLLOVER} ]]; then
+        echo "Cleaning up old archives over [${ROLLOVER}] days old @ [${target}]"
+        find "${target}/." -mtime "+${ROLLOVER}" -delete
+    fi
 done
-
+#
 # Cleanup
-echo "Cleaning up temporary backup file."
-\rm -fr ${BACKUP_FILE_PATH}
+echo "Removing temporary backup file [${BACKUP_FILE_TEMP}]"
+\rm -fr ${BACKUP_FILE_TEMP}
+#
+# 
+echo "Backup Completed!"

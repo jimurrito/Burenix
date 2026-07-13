@@ -8,6 +8,13 @@ SOURCES_PATH="/etc/burenix/conf"
 PROVIDED_DS="${2}"
 
 #
+# 
+echo "Broken during renovations!"
+exit 1
+# 
+# 
+
+#
 # Run wizard if no DS provided
 if [[ -z "${PROVIDED_DS}" ]]; then
     #
@@ -59,6 +66,9 @@ while [[ ! "$CONF" ]]; do
 done
 
 echo -e "\n Backup started..."
-systemctl restart backup-${DS}.service &
+journalctl -fu "burenix-${DS}-backup.service" &
+systemctl restart "burenix-${DS}-backup.service" || (echo "Backup job failed!" && kill %1 && exit 1)
+# kills journal background task
+kill %1
 
-echo "Run 'journalctl -u backup-${DS}.service --follow' to track the progress."
+echo "Backup completed successfully!."
