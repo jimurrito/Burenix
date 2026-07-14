@@ -32,6 +32,9 @@ in
     #
     #
     environment = {
+      # Ensures jq is available
+      systemPackages = [ pkgs.jq ];
+      #
       etc = buMapper (
         buName: buConf:
         let
@@ -48,7 +51,8 @@ in
             {
               mode = "0444";
               text = toJSON {
-                keyPath = buKeyPath;
+                name = buName;
+                keyPath = optionalString (!buConf.noEncrypt) buKeyPath;
                 sources = buConf.sourceDirs;
                 temp = buConf.tempDir;
                 targets = buConf.targetDirs;
@@ -76,21 +80,18 @@ in
           openssh # for scp
           gnupg # for gpg
         ];
-        #
-        backup-job = pkgs.runCommand "burenix-backup" { } ''
-          cp ${./jobs/backup.bash} $out
-          chmod 0555 $out
-        '';
-        restore-job = pkgs.runCommand "burenix-restore" { } ''
-          cp ${./jobs/restore.bash} $out
-          chmod 0555 $out
-        '';
       in
       buMapper (
         buName: buConf:
         let
           # determines keypath
           buKeyPath = mkKeyPath buConf.keyPathOverride;
+          # pre/post script
+          mkScript =
+            scriptConf:
+            (mkIf (scriptConf != { }) ''
+              ${bash} ${scriptConf.file} ${scriptConf.arguments}
+            '');
         in
         {
           #
@@ -105,43 +106,30 @@ in
               User = buConf.user;
               Group = buConf.group;
               # Pre-Execution script for the buConf
-              ExecStartPre =
-                let
-                  preRun = buConf.preRunScript;
-                in
-                optionalString (preRun != { }) ''
-                  ${bash} ${preRun.file} ${preRun.arguments}
-                '';
+              ExecStartPre = mkScript buConf.preRunScript;
               # ExecStart runs after all ExecStartPre commands have finished successfully
               ExecStart =
                 let
                   job-args = join " " [
                     "-n ${buName}"
-                    "-d ${(join " " buConf.sourceDirs)}"
-                    "-t ${(join " " buConf.targetDirs)}"
+                    "-d ${(join " -d " buConf.sourceDirs)}"
+                    "-t ${(join " -t " buConf.targetDirs)}"
                     "-r ${toString buConf.rolloverIntervalDays}"
-                    "-k ${buKeyPath}"
+                    (if (buConf.noEncrypt) then "-x" else "-k ${buKeyPath}")
                     "-o ${buConf.tempDir}"
                     (optionalString (buConf.usePigz) "-p")
                     (optionalString (buConf.useSSH) "-s")
-                    (optionalString (buConf.noEncrypt) "-x")
                   ];
                 in
                 ''
-                  ${backup-job} ${job-args}
+                  ${bash} ${./jobs/backup.bash} ${job-args}
                 '';
               # Ran after all 'ExecStart' commands have finished successfully.
-              ExecStartPost =
-                let
-                  postRun = buConf.postRunScript;
-                in
-                optionalString (postRun != { }) ''
-                  ${bash} ${postRun.file} ${postRun.arguments}
-                '';
+              ExecStartPost = mkScript buConf.postRunScript;
             };
           };
           # backup service timer
-          timers."burenix-${buName}-backup" = {
+          timers."burenix-${buName}-backup" = mkIf (buConf.backupTime != "") {
             enable = true;
             description = "Triggers backup for data source [${buName}] @ [${buConf.backupTime}]";
             wantedBy = [ "timers.target" ];
@@ -183,37 +171,25 @@ in
               User = buConf.user;
               Group = buConf.group;
               # Pre-Execution script for the buConf
-              ExecStartPre =
-                let
-                  preRun = buConf.preRunScript;
-                in
-                optionalString (preRun != { }) ''
-                  ${bash} ${preRun.file} ${preRun.arguments}
-                '';
+              ExecStartPre = mkScript buConf.preRunScript;
               # ExecStart runs after all ExecStartPre commands have finished successfully
               ExecStart =
                 let
                   job-args = join " " [
                     "-n ${buName}"
-                    "-t ${(join " " buConf.targetDirs)}"
-                    "-k ${buKeyPath}"
+                    # grabs the first target as it is primary for automatic restores
+                    "-t ${elemAt buConf.targetDirs 0}"
+                    (if (buConf.noEncrypt) then "-x" else "-k ${buKeyPath}")
                     "-o ${buConf.tempDir}"
                     (optionalString (buConf.usePigz) "-p")
                     (optionalString (buConf.useSSH) "-s")
-                    (optionalString (buConf.noEncrypt) "-x")
                   ];
                 in
                 ''
-                  ${restore-job} ${job-args}
+                  ${bash} ${./jobs/restore.bash} ${job-args}
                 '';
               # Ran after all 'ExecStart' commands have finished successfully.
-              ExecStartPost =
-                let
-                  postRun = buConf.postRunScript;
-                in
-                optionalString (postRun != { }) ''
-                  ${bash} ${postRun.file} ${postRun.arguments}
-                '';
+              ExecStartPost = mkScript buConf.postRunScript;
             };
           };
           #

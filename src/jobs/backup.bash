@@ -57,8 +57,8 @@ done
 
 # DEBUG OUTPUT
 echo "NAME = ${NAME}"
-echo "SOURCES = ${SOURCES}"
-echo "TARGETS = ${TARGETS}"
+echo "SOURCES = ${SOURCES[@]}"
+echo "TARGETS = ${TARGETS[@]}"
 echo "ROLLOVER = ${ROLLOVER}"
 echo "KEY_PATH = ${KEY_PATH}"
 echo "TEMP_DIR = ${TEMP_DIR}"
@@ -75,16 +75,16 @@ else COMPRESSION_ARG="-z"; fi
 if [[ -n "${USE_SSH}" ]]; then COPY_BIN="scp"; else COPY_BIN="cp -fr"; fi
 #
 # Encryption file ext
-if [[ -n "$NO_ENCRYPT" ]]; then E_EXT=".gpg"; fi
+if [[ -z "$NO_ENCRYPT" ]]; then E_EXT=".gpg"; fi
 #
 # greeting
-echo "Starting backup: [ ${NAME} ] => [ ${TARGETS} ]"
+echo "Starting backup: [ ${NAME} ] => [ ${TARGETS[@]} ]"
 #
 # Create temp backup path for compression
 BACKUP_FILE_TEMP="${TEMP_DIR}/burenix-${NAME}-$(date +"%Y-%m-%dT%H%M").tar.gz${E_EXT}"
 #
 # perform compression/encryption
-if [[ "$NO_ENCRYPT" ]]; then
+if [[ -n "$NO_ENCRYPT" ]]; then
     # Non encrypted
     echo "Compressing data source(s) [${SOURCES}] to temporary directory [${BACKUP_FILE_TEMP}]"
     tar "${COMPRESSION_ARG}" -cf "${BACKUP_FILE_TEMP}" "${SOURCES}"
@@ -101,7 +101,6 @@ for target in ${TARGETS[@]}; do
     echo "=> [${target}]"
     mkdir -p "${target}"
     # Copy compressed backup to destination target
-    echo "[${BACKUP_FILE_TEMP}] -> [${target}]"
     ${COPY_BIN} "${BACKUP_FILE_TEMP}" ${target}
     # rollover
     if [[ -n ${ROLLOVER} ]]; then
@@ -114,5 +113,5 @@ done
 echo "Removing temporary backup file [${BACKUP_FILE_TEMP}]"
 \rm -fr ${BACKUP_FILE_TEMP}
 #
-# 
+#
 echo "Backup Completed!"

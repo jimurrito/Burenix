@@ -4,28 +4,45 @@
 #
 
 SOURCES_PATH="/etc/burenix/conf"
-DATA_SOURCES=($(ls ${SOURCES_PATH}/*tgt.conf))
+DATA_SOURCES=($(ls ${SOURCES_PATH}/*.json))
 
 # Per data source
-for source in ${DATA_SOURCES[@]}; do
-    # get data source name
-    DS_NAME="$(basename "${source}" | cut -d. -f1)"
-    echo -e "\nData Source: [${DS_NAME}]\n"
-    # get targets
-    DS_TGTS=$(cat "${source}")
+for dSource in ${DATA_SOURCES[@]}; do
+    # load datasource config
+    name=$(cat $dSource | jq -r '.name')
+    targets=($(cat $dSource | jq -r '.targets.[]'))
+    #
+    echo -e "\nData Source: [${name}]\n"
+    #
+    ctr=0
+    #
     # Get snapshots from targets
-    for tgt in ${DS_TGTS[@]}; do
-        echo -e "Backup Target: [${tgt}]"
-        SNAPS=$(ls ${tgt}/backup-${DS_NAME}*.tar.gz*)
-        echo -e "Available Snapshots"
-        for snap in ${SNAPS[@]}; do
-            echo "  -> $(basename ${snap})"
+    for targ in ${targets[@]}; do
+        prime=""
+        if [[ $ctr == 0 ]]; then prime="[*]"; else prime=""; fi
+        echo -e "Backup Target: [ ${targ} ] ${prime}"
+        snaps=($(ls ${targ}/burenix-${name}-*.tar.gz* 2> /dev/null))
+        # reverse list to get newest first
+        snaps=($(echo ${snaps[@]} |tr ' ' '\n'|tac|tr '\n' ' '))
+        if [[ ${#snaps[@]} == 0 ]]; then
+            echo -e "< No Snapshots found >";
+        else
+            echo -e "Available Snapshots"
+        fi
+        ctrN=0
+        for snap in ${snaps[@]}; do
+            if [[ $ctrN == 0 && $ctr == 0 ]]; then prime="[*]"; ctrN=$((ctrN+1)); else prime=""; fi
+            echo "  -> $(basename ${snap}) ${prime}"
         done
+        # remove prime tag from the next
+        ctr=$((ctr+1));
         echo ""
     done
-    
+    #
     #
     echo ""
     printf "%.0s- " {1..30}
     echo ""
 done
+
+echo -e "\n [*] = Primary/Used for Restores"

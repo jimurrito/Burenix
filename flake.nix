@@ -50,17 +50,18 @@
                       # base backup datasource
                       conf = {
                         enable = true;
-                        sourceDirs = [ "/home/user/test.file" ];
+                        sourceDirs = [ "/etc/fstab" ];
                         targetDirs = [
                           "/var/burenix-backup"
+                          "/opt/burenix-backup"
                         ];
                         backupTime = "Tue, 03:00:00";
                       };
                     in
                     {
                       # encrypted and non-encrypted versions
-                      varlog_encrypted = conf;
-                      varlog = conf // {
+                      fstab_encrypted = conf;
+                      fstab = conf // {
                         noEncrypt = true;
                       };
                     };

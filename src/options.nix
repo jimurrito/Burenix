@@ -62,8 +62,8 @@ in
           };
           backupTime = mkOption {
             type = types.str;
-            default = "Tue, 4:00:00";
-            description = "Time the backup will trigger. Defaults to 'Tue, 4:00:00'. Uses Systemd Timer formatting.";
+            default = "";
+            description = ''Time the backup will trigger. Defaults to "" meaning disabled. Uses Systemd Timer formatting.'';
           };
           useSSH = mkOption {
             type = types.bool;
