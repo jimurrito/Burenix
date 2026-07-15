@@ -9,38 +9,33 @@ cat << 'EOF'
 
  Backup and restore system for NixOS
 --------------------------------------------------------
- USAGE:  burenix <command> [data-source]
+ USAGE:  burenix-cli <command> [data-source]
 
  COMMANDS:
 
-   backup  [data-source]   Trigger a manual backup job.
-                           Omit [data-source] to use the
-                           interactive wizard.
+   backup  <data-source>   Trigger a manual backup job for
+                           the specified data source.
 
-   restore                 Restore from a backup snapshot
-                           via interactive wizard.
+   restore <data-source>   Trigger a manual restore job for
+                           the specified data source.
 
-   ls                      List all data sources and their
+   ls      [data-source]   List data sources and their
                            available backup snapshots.
+                           Optionally filter to one source.
+
+   show    [data-source]   Print the raw JSON config for
+                           one or all data sources.
 
    help                    Show this help menu.
 
 --------------------------------------------------------
  EXAMPLES:
 
-   burenix backup              # wizard: pick a source
-   burenix backup my-data      # back up 'my-data' directly
-   burenix restore             # wizard: pick snap to restore
-   burenix ls                  # list sources + snapshots
-
---------------------------------------------------------
- NOTES:
-
-   - Backups are encrypted with GPG by default.
-     Use noEncrypt = true in your NixOS config to disable.
-   - Backup jobs run as systemd one-shot services.
-     Track progress with:
-       journalctl -u backup-<name>.service --follow
-   - Config files live in /etc/burenix/conf/
+   burenix-cli backup my-data      # back up 'my-data'
+   burenix-cli restore my-data     # restore 'my-data'
+   burenix-cli ls                  # list all sources + snapshots
+   burenix-cli ls my-data          # list snapshots for 'my-data'
+   burenix-cli show                # print all data source configs
+   burenix-cli show my-data        # print config for 'my-data'
 
 EOF

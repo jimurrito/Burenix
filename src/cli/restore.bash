@@ -5,52 +5,28 @@
 #
 
 SOURCES_PATH="/etc/burenix/conf"
-PROVIDED_DS="${2}"
+DATA_SOURCE="${1}"
+
 
 #
-# 
-echo "Broken during renovations!"
-exit 1
-# 
-# 
+# Verbose display if DATA_SOURCE is not provided
+if [[ -z "${DATA_SOURCE}" ]]; then
+    echo "No data source provided for backup. Please run 'burenix-cli ls' to see the available data sources."
+    exit 0
+fi
 
 #
-# Run wizard if no DS provided
-if [[ -z "${PROVIDED_DS}" ]]; then
-    #
-    # Wizard
-    DATA_SOURCES=($(ls ${SOURCES_PATH}/*tgt.conf))
-    SOURCE_COUNT="${#DATA_SOURCES[@]}"
-    SELECT=-1
-    while [[ ${SELECT} -le -1 || ${SELECT} -ge ${SOURCE_COUNT} ]]; do
-        SOURCE_PARSE_LIST=() # initialize
-        # Data Source selection screen
-        for ((i = 0 ; i < $SOURCE_COUNT ; i++)); do
-            parsed=$(basename "${DATA_SOURCES[$i]}" | cut -d. -f1)
-            SOURCE_PARSE_LIST+=("${parsed}")
-            echo "[${i}] - ${parsed}"
-        done
-        # take input
-        read -p "Select a data source [0-$(( SOURCE_COUNT - 1 ))]: " SELECT
-        # Input check
-        if [[ ${SELECT} -gt -1 && ${SELECT} -lt ${SOURCE_COUNT} ]]; then
-            # Input OK
-            DS="${SOURCE_PARSE_LIST[$SELECT]}" # Friendly name of data-source
-        else
-            # bad input
-            echo -e "\nInput [${SELECT}] is out of bounds! \n"
-        fi
-    done
-else
-    #
-    # Direct run
-    DS="${PROVIDED_DS}"
+# Check that the DATA_SOURCE provided is valid
+valid=$(ls ${SOURCES_PATH}/${DATA_SOURCE}.json 2> /dev/null)
+if [[ -z "${valid}" ]]; then
+    echo "Data source: [${DATA_SOURCE}] was not found. Please run 'burenix-cli ls' to see the available data sources."
+    exit 1
 fi
 
 #
 # Final confirmation
 while [[ ! "$CONF" ]]; do
-    echo -e "\nAre you sure you want to start the backup of this Data Source [${DS}]?"
+    echo -e "\nAre you sure you want to start the restore of this Data Source [${DATA_SOURCE}]?"
     read -p "[y/n]: " RESP
     case "${RESP}" in
         y|Y)
@@ -65,10 +41,27 @@ while [[ ! "$CONF" ]]; do
     esac
 done
 
-echo -e "\n Backup started..."
-journalctl -fu "burenix-${DS}-backup.service" &
-systemctl restart "burenix-${DS}-backup.service" || (echo "Backup job failed!" && kill %1 && exit 1)
-# kills journal background task
+#
+srv="burenix-${DATA_SOURCE}-restore.service"
+
+#
+# Start backup job
+echo -e "\nRestore started..."
+# Prestart systemd logging to stdout
+journalctl -fu "${srv}" &
+sudo systemctl restart "${srv}" || (echo "Restore job failed to start!" && exit 1)
+
+#
+# Stop sample logging after interval
+sleep 3
+# Kill background logging
 kill %1
 
-echo "Backup completed successfully!."
+#
+# check if the service is still running to determine status
+buStatus=$(systemctl show "${srv}" --property SubState)
+if [[ "${buStatus}" == "SubState=active" ]]; then
+    echo "Run 'journalctl -fu "${srv}"' to continue tracking the progreess."
+else
+    echo "Restore job completed!"
+fi

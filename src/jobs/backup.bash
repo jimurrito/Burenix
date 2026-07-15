@@ -8,7 +8,7 @@ SOURCES=()
 TARGETS=()
 
 # Assigns CLI arguments
-while getopts "n:d:t:r:k:o:psxv" opt; do
+while getopts "n:d:t:r:k:o:psv" opt; do
     case "$opt" in
         # Name of the backup
         n)
@@ -106,7 +106,7 @@ else
 fi
 #
 # generate file integrity hash. SHA256.
-if [[ $CHECKSUM  ]]; then
+if [[ $CHECKSUM ]]; then
     shaFile="${backupFileTemp%.tar*}.checksum"
     echo "Creating checksum file from backup. [$(basename $shaFile)]"
     sha256sum "${backupFileTemp}" > "${shaFile}"

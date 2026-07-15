@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#
 
 #
 # Restore script for backup-restore
