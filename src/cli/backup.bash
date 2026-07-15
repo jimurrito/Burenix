@@ -16,8 +16,7 @@ fi
 
 #
 # Check that the DATA_SOURCE provided is valid
-valid=$(ls ${SOURCES_PATH}/${DATA_SOURCE}.json 2> /dev/null)
-if [[ -z "${valid}" ]]; then
+if [[ -z $(ls ${SOURCES_PATH}/${DATA_SOURCE}.json 2> /dev/null) ]]; then
     echo "Data source: [${DATA_SOURCE}] was not found. Please run 'burenix-cli ls' to see the available data sources."
     exit 1
 fi

@@ -5,13 +5,13 @@
 #
 
 SOURCES_PATH="/etc/burenix/conf"
-dataSource="${1}"
+DATA_SOURCE="${1}"
 job="${2}"
 args=${@:3}
 
 #
 # Verbose display if DATA_SOURCE is not provided
-if [[ -z "${dataSource}" ]]; then
+if [[ -z "${DATA_SOURCE}" ]]; then
     echo "No data source provided. Please run 'burenix-cli ls' to see the available data sources."
     exit 1
 fi
@@ -23,9 +23,8 @@ fi
 
 #
 #   Check that the DATA_SOURCE provided is valid
-valid=$(ls ${SOURCES_PATH}/${dataSource}.json 2> /dev/null)
-if [[ -z $valid ]]; then
-    echo "Data source: [${dataSource}] was not found. Please run 'burenix-cli ls' to see the available data sources."
+if [[ -z $(ls ${SOURCES_PATH}/${DATA_SOURCE}.json 2> /dev/null) ]]; then
+    echo "Data source: [${DATA_SOURCE}] was not found. Please run 'burenix-cli ls' to see the available data sources."
     exit 1
 fi
 
@@ -33,7 +32,7 @@ fi
 #  validate job
 case $job in
     backup | restore )
-        journalctl -u "burenix-${dataSource}-${job}.service" ${args}
+        journalctl -u "burenix-${DATA_SOURCE}-${job}.service" ${args}
         ;;
     * )
         echo "Job provided [${job}] is not valid. Input must be either 'backup' or 'restore'."
