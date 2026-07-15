@@ -210,14 +210,19 @@ burenix-cli <command> [data-source]
 
   show    [data-source]   Print the raw JSON config for one or all sources.
 
+  logs    <data-source>   Show journalctl logs for a data source's backup
+          <backup|restore> or restore service. Extra arguments are passed
+          [journalctl-args] through to journalctl.
+
   help                    Show the help menu.
 ```
 
-Track a running job with:
+Examples:
 
 ```bash
-journalctl -fu burenix-<name>-backup.service
-journalctl -fu burenix-<name>-restore.service
+burenix-cli logs my-data backup        # show backup logs
+burenix-cli logs my-data restore -f    # follow restore logs live
+burenix-cli logs my-data backup -n 50  # last 50 lines of backup logs
 ```
 
 ---

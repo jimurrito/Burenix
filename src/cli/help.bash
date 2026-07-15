@@ -26,16 +26,22 @@ cat << 'EOF'
    show    [data-source]   Print the raw JSON config for
                            one or all data sources.
 
+   logs    <data-source>   Show journalctl logs for a data
+           <backup|restore> source's backup or restore service.
+           [journalctl-args] Extra args are passed to journalctl.
+
    help                    Show this help menu.
 
 --------------------------------------------------------
  EXAMPLES:
 
-   burenix-cli backup my-data      # back up 'my-data'
-   burenix-cli restore my-data     # restore 'my-data'
-   burenix-cli ls                  # list all sources + snapshots
-   burenix-cli ls my-data          # list snapshots for 'my-data'
-   burenix-cli show                # print all data source configs
-   burenix-cli show my-data        # print config for 'my-data'
+   burenix-cli backup my-data           # back up 'my-data'
+   burenix-cli restore my-data          # restore 'my-data'
+   burenix-cli ls                       # list all sources + snapshots
+   burenix-cli ls my-data               # list snapshots for 'my-data'
+   burenix-cli show                     # print all data source configs
+   burenix-cli show my-data             # print config for 'my-data'
+   burenix-cli logs my-data backup      # show backup logs for 'my-data'
+   burenix-cli logs my-data restore -f  # follow restore logs for 'my-data'
 
 EOF

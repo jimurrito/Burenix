@@ -14,13 +14,13 @@ CLI_ARGS="${@:2}"
 CLI_PATH="/etc/burenix/cli"
 
 case "${CLI_CMD}" in
-    restore | backup | ls | show)
+    restore | backup | ls | show | logs )
         ${CLI_PATH}/${CLI_CMD} ${CLI_ARGS}
         ;;
-    help)
+    help )
         ${CLI_PATH}/help
         ;;
-    *)
+    * )
         echo "No valid sub-command provided."
         ${CLI_PATH}/help
         exit 1

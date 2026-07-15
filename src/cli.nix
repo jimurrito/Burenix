@@ -29,6 +29,7 @@ with lib;
             "backup"
             "restore"
             "show"
+            "logs"
           ]
       );
     };
