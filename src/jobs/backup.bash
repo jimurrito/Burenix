@@ -8,7 +8,7 @@ SOURCES=()
 TARGETS=()
 
 # Assigns CLI arguments
-while getopts "n:d:t:r:k:o:psx" opt; do
+while getopts "n:d:t:r:k:o:psxv" opt; do
     case "$opt" in
         # Name of the backup
         n)
@@ -22,6 +22,10 @@ while getopts "n:d:t:r:k:o:psx" opt; do
         t)
             TARGETS+=("${OPTARG}")
             ;;
+        # Temporary Directory
+        o)
+            TEMP_DIR="${OPTARG}"
+            ;;
         # rollover interval
         r)
             ROLLOVER="${OPTARG}"
@@ -29,10 +33,7 @@ while getopts "n:d:t:r:k:o:psx" opt; do
         # Encryption key
         k)
             KEY_PATH="${OPTARG}"
-            ;;
-        # Temporary Directory
-        o)
-            TEMP_DIR="${OPTARG}"
+            ENCRYPT=1
             ;;
         # Use SSH
         s)
@@ -42,9 +43,9 @@ while getopts "n:d:t:r:k:o:psx" opt; do
         p)
             USE_PIGZ=1
             ;;
-        # No encryption
-        x)
-            NO_ENCRYPT=1
+        # CHECKSUM backup file
+        v)
+            CHECKSUM=1
             ;;
         # Unknown arg
         ?)
@@ -56,62 +57,86 @@ while getopts "n:d:t:r:k:o:psx" opt; do
 done
 
 # DEBUG OUTPUT
-echo "NAME = ${NAME}"
-echo "SOURCES = ${SOURCES[@]}"
-echo "TARGETS = ${TARGETS[@]}"
-echo "ROLLOVER = ${ROLLOVER}"
-echo "KEY_PATH = ${KEY_PATH}"
-echo "TEMP_DIR = ${TEMP_DIR}"
-echo "USE_PIGZ = ${USE_PIGZ}"
-echo "USE_SSH = ${USE_SSH}"
-echo "NO_ENCRYPT = ${NO_ENCRYPT}"
+echo "NAME       = ${NAME}"
+echo "SOURCES    = ${SOURCES[@]}"
+echo "TARGETS    = ${TARGETS[@]}"
+echo "TEMP_DIR   = ${TEMP_DIR}"
+echo "ROLLOVER   = ${ROLLOVER}"
+echo "USE_PIGZ   = ${USE_PIGZ}"
+echo "USE_SSH    = ${USE_SSH}"
+echo "ENCRYPT    = ${ENCRYPT}"
+echo "KEY_PATH   = ${KEY_PATH}"
+echo "CHECKSUM   = ${CHECKSUM}"
 
 #
 #  compression service
-if [[ -n "${USE_PIGZ}" ]]; then COMPRESSION_ARG="--use-compress-program=pigz";
-else COMPRESSION_ARG="-z"; fi
+if [[ $USE_PIGZ ]]; then tarArgs="--use-compress-program=pigz";
+else tarArgs="-z"; fi
 #
 #  Copy program
-if [[ -n "${USE_SSH}" ]]; then COPY_BIN="scp"; else COPY_BIN="cp -fr"; fi
+if [[ $USE_SSH ]]; then copyBin="scp"; else copyBin="cp -fr"; fi
 #
 # Encryption file ext
-if [[ -z "$NO_ENCRYPT" ]]; then E_EXT=".gpg"; fi
+if [[ $ENCRYPT ]]; then eExt=".gpg"; fi
+#
+# Determine if we are going to do checksum
+# If we are using GPG encrytion, no need to generate a checksum.
+# Gpg does this check automatically.
+if [[ $ENCRYPT && $CHECKSUM ]]; then
+    # Frees variable
+    CHECKSUM=
+fi
 #
 # greeting
 echo "Starting backup: [ ${NAME} ] => [ ${TARGETS[@]} ]"
 #
 # Create temp backup path for compression
-BACKUP_FILE_TEMP="${TEMP_DIR}/burenix-${NAME}-$(date +"%Y-%m-%dT%H%M").tar.gz${E_EXT}"
+backupFileTemp="${TEMP_DIR}/burenix-${NAME}-$(date +"%Y-%m-%dT%H%M").tar.gz${eExt}"
 #
 # perform compression/encryption
-if [[ -n "$NO_ENCRYPT" ]]; then
-    # Non encrypted
-    echo "Compressing data source(s) [${SOURCES}] to temporary directory [${BACKUP_FILE_TEMP}]"
-    tar "${COMPRESSION_ARG}" -cf "${BACKUP_FILE_TEMP}" "${SOURCES}"
-else
+if [[ $ENCRYPT ]]; then
     # Compress and encrypt data
-    echo "Compressing and Encrypting data source(s) [${SOURCES}] to temporary directory [${BACKUP_FILE_TEMP}]"
+    echo "Compressing and Encrypting data source(s) [${SOURCES}] to temporary directory [${backupFileTemp}]"
     # use '-' for tar output file name '-f' so it will pass the output to gpg for encryption.
-    tar "${COMPRESSION_ARG}" -cf - "${SOURCES}" | gpg --batch --passphrase-file ${KEY_PATH} -c  > "${BACKUP_FILE_TEMP}"
+    tar "${tarArgs}" -cf - "${SOURCES}" | gpg --batch --passphrase-file ${KEY_PATH} -c  > "${backupFileTemp}"
+else
+    # Non encrypted
+    echo "Compressing data source(s) [${SOURCES}] to temporary directory [${backupFileTemp}]"
+    tar "${tarArgs}" -cf "${backupFileTemp}" "${SOURCES}"
+fi
+#
+# generate file integrity hash. SHA256.
+if [[ $CHECKSUM  ]]; then
+    shaFile="${backupFileTemp%.tar*}.checksum"
+    echo "Creating checksum file from backup. [$(basename $shaFile)]"
+    sha256sum "${backupFileTemp}" > "${shaFile}"
 fi
 #
 # Copy file to target locations
-echo "Coping backup data [${BACKUP_FILE_TEMP}] to [${#TARGETS[@]}] target(s)."
+echo "Coping backup data [${backupFileTemp}] to [${#TARGETS[@]}] target(s)."
 for target in ${TARGETS[@]}; do
+    #
     echo "=> [${target}]"
     mkdir -p "${target}"
-    # Copy compressed backup to destination target
-    ${COPY_BIN} "${BACKUP_FILE_TEMP}" ${target}
-    # rollover
-    if [[ -n ${ROLLOVER} ]]; then
+    #
+    #  Copy compressed backup to destination target
+    ${copyBin} "${backupFileTemp}" "${target}"
+    #
+    #  Copy checksum file if applicable
+    if [[ $CHECKSUM ]]; then ${copyBin} "${shaFile}" "${target}"; fi
+    #
+    # rollover old backups
+    if [[ $ROLLOVER ]]; then
         echo "Cleaning up old archives over [${ROLLOVER}] days old @ [${target}]"
         find "${target}/." -mtime "+${ROLLOVER}" -delete
     fi
 done
 #
 # Cleanup
-echo "Removing temporary backup file [${BACKUP_FILE_TEMP}]"
-\rm -fr ${BACKUP_FILE_TEMP}
+echo "Removing temporary backup file [${backupFileTemp}]"
+rm -fr "${backupFileTemp}"
+# delete sha file and ignore errors if it doesnt exist
+rm -fr "${shaFile}" 2> /dev/null
 #
 #
 echo "Backup Completed!"

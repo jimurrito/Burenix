@@ -14,56 +14,59 @@ let
     logic:
     (mkMerge (mapAttrsToList (buName: buConf: (mkIf buConf.enable (logic buName buConf))) backups));
   #
-  mkKeyPath = i: (if (i != "") then i else burenix-nixops.keyPath);
+  # If input value is null, root password file will be used.
+  mkKeyPath = i: (if (isString i) then i else burenix-nixops.keyPath);
   #
   #
 in
 {
   #
   #
+  imports = [
+    ./cli.nix
+  ];
+  #
+  #
   # config to be implemented via the `options`
   config = mkIf (burenix-nixops.enable) {
     #
-    # Burenix CLI
-    services.burenix-cli = {
-      enable = true;
-      keyPath = burenix-nixops.keyPath;
-    };
+    # Group for burenix
+    users.groups.burenix = { };
     #
     #
     environment = {
       # Ensures jq is available
       systemPackages = [ pkgs.jq ];
-      #
+      # maps out backup declarations
       etc = buMapper (
         buName: buConf:
         let
           # determines keypath
-          buKeyPath = mkKeyPath buConf.keyPathOverride;
+          buKeyPath = mkKeyPath buConf.encryption.keyPath;
         in
         {
           #
           # easily accessible configs for the burenix-cli
-          "burenix/conf/${buName}.json" =
-            let
-              ifEmpty = i: (if (i != { }) then i else { });
-            in
-            {
-              mode = "0444";
-              text = toJSON {
-                name = buName;
-                keyPath = optionalString (!buConf.noEncrypt) buKeyPath;
-                sources = buConf.sourceDirs;
-                temp = buConf.tempDir;
-                targets = buConf.targetDirs;
-                useSSH = buConf.useSSH;
-                usePigz = buConf.usePigz;
-                noEncrypt = buConf.noEncrypt;
-                preRunScript = ifEmpty buConf.preRunScript;
-                postRunScript = ifEmpty buConf.postRunScript;
-                rolloverIntervalDays = buConf.rolloverIntervalDays;
-              };
+          "burenix/conf/${buName}.json" = {
+            # readable only by owner and group for the backup
+            mode = "0440";
+            user = buConf.user;
+            group = buConf.group;
+            text = toJSON {
+              name = buName;
+              sources = buConf.sourceDirs;
+              temp = buConf.tempDir;
+              targets = buConf.targetDirs;
+              preRunScript = (mkIf (buConf.preRunScript.enable) buConf.preRunScript).content;
+              postRunScript = (mkIf (buConf.postRunScript.enable) buConf.postRunScript).content;
+              rollover = buConf.rollover;
+              backupTime = buConf.backupTime;
+              useSSH = buConf.useSSH;
+              usePigz = buConf.usePigz;
+              keyPath = optionalString (buConf.encryption.enable) buKeyPath;
+              checksum = buConf.checksum;
             };
+          };
         }
       );
     };
@@ -72,26 +75,36 @@ in
     # systemd service
     systemd =
       let
-        bash = getExe pkgs.bash;
         srvDeps = with pkgs; [
           gnutar
+          bash
           gzip
           pigz
           openssh # for scp
           gnupg # for gpg
         ];
+        # pre/post script
+        mkScript =
+          scriptConf:
+          (mkIf (scriptConf.enable) ''
+            ${getExe pkgs.bash} ${scriptConf.file} ${scriptConf.arguments}
+          '');
+        # job scripts
+        mkScriptExe =
+          name: script:
+          (pkgs.runCommand name { } ''
+            cp ${script} $out
+            chmod 0555 $out
+          '');
+        backup-job = mkScriptExe "backup-job" ./jobs/backup.bash;
+        restore-job = mkScriptExe "restore-job" ./jobs/restore.bash;
       in
+      # maps out backup declarations
       buMapper (
         buName: buConf:
         let
           # determines keypath
-          buKeyPath = mkKeyPath buConf.keyPathOverride;
-          # pre/post script
-          mkScript =
-            scriptConf:
-            (mkIf (scriptConf != { }) ''
-              ${bash} ${scriptConf.file} ${scriptConf.arguments}
-            '');
+          buKeyPath = mkKeyPath buConf.encryption.keyPath;
         in
         {
           #
@@ -114,22 +127,23 @@ in
                     "-n ${buName}"
                     "-d ${(join " -d " buConf.sourceDirs)}"
                     "-t ${(join " -t " buConf.targetDirs)}"
-                    "-r ${toString buConf.rolloverIntervalDays}"
-                    (if (buConf.noEncrypt) then "-x" else "-k ${buKeyPath}")
                     "-o ${buConf.tempDir}"
+                    (optionalString (buConf.rollover.enable) "-r ${toString buConf.rollover.intervalDays}")
+                    (optionalString (buConf.encryption.enable) "-k ${buKeyPath}")
+                    (optionalString (buConf.checksum) "-v")
                     (optionalString (buConf.usePigz) "-p")
                     (optionalString (buConf.useSSH) "-s")
                   ];
                 in
                 ''
-                  ${bash} ${./jobs/backup.bash} ${job-args}
+                  ${backup-job} ${job-args}
                 '';
               # Ran after all 'ExecStart' commands have finished successfully.
               ExecStartPost = mkScript buConf.postRunScript;
             };
           };
           # backup service timer
-          timers."burenix-${buName}-backup" = mkIf (buConf.backupTime != "") {
+          timers."burenix-${buName}-backup" = mkIf (isString buConf.backupTime) {
             enable = true;
             description = "Triggers backup for data source [${buName}] @ [${buConf.backupTime}]";
             wantedBy = [ "timers.target" ];
@@ -140,25 +154,21 @@ in
           #
           #
           # Backup data source init
-          services."burenix-${buName}-init" =
-            let
-              mkDir = "${pkgs.coreutils}/bin/mkdir";
-            in
-            {
-              enable = true;
-              description = "Target creator for Buenix backup [${buName}]";
-              after = [ "network.target" ];
-              wantedBy = [ "multi-user.target" ];
-              path = with pkgs; [ coreutils ];
-              serviceConfig = {
-                User = buConf.user;
-                Group = buConf.group;
-                Type = "oneshot";
-                ExecStart = ''
-                  ${mkDir} -p ${(join " " buConf.targetDirs)}
-                '';
-              };
+          services."burenix-${buName}-init" = {
+            enable = true;
+            description = "Target creator for Buenix backup [${buName}]";
+            after = [ "network.target" ];
+            wantedBy = [ "multi-user.target" ];
+            path = with pkgs; [ coreutils ];
+            serviceConfig = {
+              User = buConf.user;
+              Group = buConf.group;
+              Type = "oneshot";
+              ExecStart = ''
+                ${pkgs.coreutils}/bin/mkdir -p ${(join " " buConf.targetDirs)}
+              '';
             };
+          };
           #
           #
           # Backup restore service(s)
@@ -179,24 +189,21 @@ in
                     "-n ${buName}"
                     # grabs the first target as it is primary for automatic restores
                     "-t ${elemAt buConf.targetDirs 0}"
-                    (if (buConf.noEncrypt) then "-x" else "-k ${buKeyPath}")
                     "-o ${buConf.tempDir}"
+                    (optionalString (buConf.encryption.enable) "-k ${buKeyPath}")
+                    (optionalString (buConf.checksum) "-v")
                     (optionalString (buConf.usePigz) "-p")
                     (optionalString (buConf.useSSH) "-s")
                   ];
                 in
                 ''
-                  ${bash} ${./jobs/restore.bash} ${job-args}
+                  ${restore-job} ${job-args}
                 '';
               # Ran after all 'ExecStart' commands have finished successfully.
               ExecStartPost = mkScript buConf.postRunScript;
             };
           };
-          #
-          #
         }
       );
-    #
-    #
   };
 }

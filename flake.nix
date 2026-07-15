@@ -22,7 +22,6 @@
       nixosModules.default.imports = [
         ./src/options.nix
         ./src/config.nix
-        ./src/cli.nix
       ];
       #
       #
@@ -37,37 +36,36 @@
             (import test-vm.baselineConfig { })
             self.nixosModules.default
             # test config
-            (
-              { pkgs, ... }:
-              {
-                environment.systemPackages = [ pkgs.jq ];
-                #
-                services.burenix = {
-                  enable = true;
-                  keyPath = "/etc/hostname";
-                  backups =
-                    let
-                      # base backup datasource
-                      conf = {
-                        enable = true;
-                        sourceDirs = [ "/etc/fstab" ];
-                        targetDirs = [
-                          "/var/burenix-backup"
-                          "/opt/burenix-backup"
-                        ];
-                        backupTime = "Tue, 03:00:00";
-                      };
-                    in
-                    {
-                      # encrypted and non-encrypted versions
-                      fstab_encrypted = conf;
-                      fstab = conf // {
-                        noEncrypt = true;
-                      };
+            {
+              users.users.user.extraGroups = [ "burenix" ];
+              services.burenix = {
+                enable = true;
+                keyPath = "/etc/hostname";
+                backups =
+                  let
+                    # base backup datasource
+                    conf = {
+                      enable = true;
+                      sourceDirs = [ "/etc/fstab" ];
+                      targetDirs = [
+                        "/var/burenix-backup"
+                        "/opt/burenix-backup"
+                      ];
+                      backupTime = "Tue, 03:00:00";
+                      rollover.enable = true;
                     };
-                };
-              }
-            )
+                  in
+                  {
+                    # encrypted and non-encrypted versions
+                    fstab = conf // {
+                      checksum = true;
+                    };
+                    fstab_encrypted = conf // {
+                      encryption.enable = true;
+                    };
+                  };
+              };
+            }
           ];
         };
       };

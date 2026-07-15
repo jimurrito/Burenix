@@ -5,9 +5,8 @@
 #
 
 SOURCES_PATH="/etc/burenix/conf"
-dataSource="${2}"
+dataSource="${1}"
 
-#
 #
 # Verbose display if datasource is not provided
 if [[ -z "${dataSource}" ]]; then

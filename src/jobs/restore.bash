@@ -51,13 +51,13 @@ done
 TARGET_DIR=${TARGETS[0]}
 
 # DEBUG OUTPUT
-echo "NAME = ${NAME}"
-echo "TARGETS = ${TARGETS[@]}"
+echo "NAME       = ${NAME}"
+echo "TARGETS    = ${TARGETS[@]}"
 echo "TARGET_DIR = ${TARGET_DIR}"
-echo "KEY_PATH = ${KEY_PATH}"
-echo "TEMP_DIR = ${TEMP_DIR}"
-echo "USE_PIGZ = ${USE_PIGZ}"
-echo "USE_SSH = ${USE_SSH}"
+echo "KEY_PATH   = ${KEY_PATH}"
+echo "TEMP_DIR   = ${TEMP_DIR}"
+echo "USE_PIGZ   = ${USE_PIGZ}"
+echo "USE_SSH    = ${USE_SSH}"
 echo "NO_ENCRYPT = ${NO_ENCRYPT}"
 
 #

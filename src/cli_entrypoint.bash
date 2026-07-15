@@ -9,14 +9,13 @@
 #
 
 # Mappings for entrypoint input args
-KEY_PATH="${1}" # passed in alias invocation
-CLI_CMD="${2}"
-CLI_ARGS="${@:3}"
+CLI_CMD="${1}"
+CLI_ARGS="${@:2}"
 CLI_PATH="/etc/burenix/cli"
 
 case "${CLI_CMD}" in
-    restore | backup | ls)
-        ${CLI_PATH}/${CLI_CMD} "${KEY_PATH}" ${CLI_ARGS}
+    restore | backup | ls | show)
+        ${CLI_PATH}/${CLI_CMD} ${CLI_ARGS}
         ;;
     help)
         ${CLI_PATH}/help
