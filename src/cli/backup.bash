@@ -59,7 +59,7 @@ kill %1
 # check if the service is still running to determine status
 buStatus=$(systemctl show "${srv}" --property SubState)
 if [[ "${buStatus}" == "SubState=active" ]]; then
-    echo "Run 'journalctl -fu "${srv}"' to continue tracking the progreess."
+    echo "Run 'burenix-cli logs ${DATA_SOURCE} backup -f' to continue tracking the progreess."
 else
     echo "Backup job completed!"
 fi
