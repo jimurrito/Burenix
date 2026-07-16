@@ -160,7 +160,7 @@ in
                 ${pkgs.coreutils}/bin/chown -Rv ${buConf.user}:${buConf.group} ${(join " " buConf.targetDirs)}
               '';
               exe = pkgs.runCommand "${buName}-init" { } ''
-                echo -e ${script} > $out
+                echo -e "${script}" > $out
                 chmod 0555 $out
               '';
             in

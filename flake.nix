@@ -40,7 +40,6 @@
               users.users.user.extraGroups = [ "burenix" ];
               services.burenix = {
                 enable = true;
-                keyPath = "/etc/hostname";
                 backups =
                   let
                     # base backup datasource
@@ -61,7 +60,10 @@
                       checksum = true;
                     };
                     fstab_encrypted = conf // {
-                      encryption.enable = true;
+                      encryption = {
+                        enable = true;
+                        keyPath = "/etc/hostname";
+                      };
                     };
                   };
               };
