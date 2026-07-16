@@ -71,8 +71,8 @@ Run `nixos-rebuild switch` and burenix will create a systemd service and timer f
 Backups are encrypted with GPG symmetric encryption when `encryption.enable = true`. The key file should contain a plain-text passphrase:
 
 ```bash
-echo "your-passphrase" > /root/backup-key
-chmod 400 /root/backup-key
+echo "your-passphrase" > /path/to/keyfile
+chmod 400 /path/to/keyfile
 ```
 
 Set `encryption.keyPath` per data source to point to the passphrase file.
@@ -108,7 +108,7 @@ services.burenix = {
 
     encryption = {
       enable  = true;
-      keyPath = "/root/backup-key";
+      keyPath = "/path/to/keyfile";
     };
 
     rollover = {
@@ -118,7 +118,7 @@ services.burenix = {
 
     preRunScript = {
       enable    = true;
-      file      = ./scripts/pg-dump.bash;
+      file      = ./scripts/pg-dump.bash; # Just an example
       arguments = "--clean";
     };
   };
@@ -163,34 +163,34 @@ services.burenix = {
 
 ### Top-level (`services.burenix`)
 
-| Option   | Type | Default | Description              |
-|----------|------|---------|--------------------------|
+| Option   | Type | Default | Description               |
+| -------- | ---- | ------- | ------------------------- |
 | `enable` | bool | `false` | Enable the burenix module |
 
 ### Per data source (`services.burenix.backups.<name>`)
 
-| Option                      | Type           | Default    | Description                                              |
-|-----------------------------|----------------|------------|----------------------------------------------------------|
-| `enable`                    | bool           | `false`    | Enable this data source                                  |
-| `user`                      | string         | `"root"`   | User the service runs as                                 |
-| `group`                     | string         | `"burenix"`| Group the service runs as                                |
-| `sourceDirs`                | list of string | `[]`       | Paths to back up                                         |
-| `targetDirs`                | list of string | `[]`       | Destination paths to write backups to                    |
-| `tempDir`                   | string         | `"/tmp"`   | Staging directory used during compression                |
-| `backupTime`                | string or null | `null`     | Systemd `OnCalendar` schedule; `null` disables the timer |
-| `useSSH`                    | bool           | `false`    | Use `scp` instead of `cp` for transfers                  |
-| `usePigz`                   | bool           | `false`    | Use pigz (multi-threaded gzip) for compression           |
-| `checksum`                  | bool           | `false`    | Generate a SHA-256 checksum file alongside the archive   |
-| `encryption.enable`         | bool           | `false`    | Enable GPG encryption                                    |
-| `encryption.keyPath`        | string or null | `null`     | Path to the GPG passphrase file for this source          |
-| `rollover.enable`           | bool           | `false`    | Enable automatic pruning of old archives                 |
-| `rollover.intervalDays`     | number         | `14`       | Delete archives older than this many days                |
-| `preRunScript.enable`       | bool           | `false`    | Run a script before the job starts                       |
-| `preRunScript.file`         | path or null   | `null`     | Path to the pre-run script                               |
-| `preRunScript.arguments`    | string         | `""`       | Arguments to pass to the pre-run script                  |
-| `postRunScript.enable`      | bool           | `false`    | Run a script after the job completes                     |
-| `postRunScript.file`        | path or null   | `null`     | Path to the post-run script                              |
-| `postRunScript.arguments`   | string         | `""`       | Arguments to pass to the post-run script                 |
+| Option                    | Type           | Default     | Description                                              |
+| ------------------------- | -------------- | ----------- | -------------------------------------------------------- |
+| `enable`                  | bool           | `false`     | Enable this data source                                  |
+| `user`                    | string         | `"root"`    | User the service runs as                                 |
+| `group`                   | string         | `"burenix"` | Group the service runs as                                |
+| `sourceDirs`              | list of string | `[]`        | Paths to back up                                         |
+| `targetDirs`              | list of string | `[]`        | Destination paths to write backups to                    |
+| `tempDir`                 | string         | `"/tmp"`    | Staging directory used during compression                |
+| `backupTime`              | string or null | `null`      | Systemd `OnCalendar` schedule; `null` disables the timer |
+| `useSSH`                  | bool           | `false`     | Use `scp` instead of `cp` for transfers                  |
+| `usePigz`                 | bool           | `false`     | Use pigz (multi-threaded gzip) for compression           |
+| `checksum`                | bool           | `false`     | Generate a SHA-256 checksum file alongside the archive   |
+| `encryption.enable`       | bool           | `false`     | Enable GPG encryption                                    |
+| `encryption.keyPath`      | string or null | `null`      | Path to the GPG passphrase file for this source          |
+| `rollover.enable`         | bool           | `false`     | Enable automatic pruning of old archives                 |
+| `rollover.intervalDays`   | number         | `14`        | Delete archives older than this many days                |
+| `preRunScript.enable`     | bool           | `false`     | Run a script before the job starts                       |
+| `preRunScript.file`       | path or null   | `null`      | Path to the pre-run script                               |
+| `preRunScript.arguments`  | string         | `""`        | Arguments to pass to the pre-run script                  |
+| `postRunScript.enable`    | bool           | `false`     | Run a script after the job completes                     |
+| `postRunScript.file`      | path or null   | `null`      | Path to the post-run script                              |
+| `postRunScript.arguments` | string         | `""`        | Arguments to pass to the post-run script                 |
 
 ---
 
