@@ -27,15 +27,21 @@ in
       description = "An individual backup declaration";
       type = mkDynSubmod {
         enable = mkEnableOption "The backup of this data source";
+        createUser = mkEnableOption "Enables creation of the rootless identity. Useful if the user is already created with a flake like Podmanix.";
         user = mkOption {
           type = types.str;
-          default = "root";
+          default = "burenix";
           description = "System user to run the backup service under. Defaults to root due to complex permissions needed.";
         };
         group = mkOption {
           type = types.str;
           default = "burenix";
           description = "Group for the service.";
+        };
+        extraGroups = mkOption {
+          type = types.listOf types.str;
+          default = [ ];
+          description = "Additional groups for the backup service user. Not implemented when user is 'root'.";
         };
         #
         sourceDirs = mkOption {
@@ -69,6 +75,7 @@ in
               default = "";
               description = "Arguments that will be taken by the script.";
             };
+            exitOnFail = mkEnableOption "service exiting if the pre-run script fails.";
           };
         };
         postRunScript = mkOption {
@@ -86,6 +93,7 @@ in
               default = "";
               description = "Arguments that will be taken by the script.";
             };
+            exitOnFail = mkEnableOption "service exiting if the post-run script fails.";
           };
         };
         #

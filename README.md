@@ -3,7 +3,7 @@
 ![Nix](https://img.shields.io/badge/language-Nix%20%2F%20Bash-5277C3?logo=nixos)
 ![License](https://img.shields.io/badge/license-GPL--3.0-blue)
 
-Backup and restore system for NixOS. Wraps GPG-encrypted tar archives into systemd timers, managed entirely through NixOS module options.
+Backup and restore system for NixOS. Wraps GPG-encrypted tar archives into systemd timers, managed entirely through NixOS module options. Services run rootless by default under a dedicated `burenix` system user; a custom user can be specified per data source.
 
 ---
 
@@ -169,28 +169,32 @@ services.burenix = {
 
 ### Per data source (`services.burenix.backups.<name>`)
 
-| Option                    | Type           | Default     | Description                                              |
-| ------------------------- | -------------- | ----------- | -------------------------------------------------------- |
-| `enable`                  | bool           | `false`     | Enable this data source                                  |
-| `user`                    | string         | `"root"`    | User the service runs as                                 |
-| `group`                   | string         | `"burenix"` | Group the service runs as                                |
-| `sourceDirs`              | list of string | `[]`        | Paths to back up                                         |
-| `targetDirs`              | list of string | `[]`        | Destination paths to write backups to                    |
-| `tempDir`                 | string         | `"/tmp"`    | Staging directory used during compression                |
-| `backupTime`              | string or null | `null`      | Systemd `OnCalendar` schedule; `null` disables the timer |
-| `useSSH`                  | bool           | `false`     | Use `scp` instead of `cp` for transfers                  |
-| `usePigz`                 | bool           | `false`     | Use pigz (multi-threaded gzip) for compression           |
-| `checksum`                | bool           | `false`     | Generate a SHA-256 checksum file alongside the archive   |
-| `encryption.enable`       | bool           | `false`     | Enable GPG encryption                                    |
-| `encryption.keyPath`      | string or null | `null`      | Path to the GPG passphrase file for this source          |
-| `rollover.enable`         | bool           | `false`     | Enable automatic pruning of old archives                 |
-| `rollover.intervalDays`   | number         | `14`        | Delete archives older than this many days                |
-| `preRunScript.enable`     | bool           | `false`     | Run a script before the job starts                       |
-| `preRunScript.file`       | path or null   | `null`      | Path to the pre-run script                               |
-| `preRunScript.arguments`  | string         | `""`        | Arguments to pass to the pre-run script                  |
-| `postRunScript.enable`    | bool           | `false`     | Run a script after the job completes                     |
-| `postRunScript.file`      | path or null   | `null`      | Path to the post-run script                              |
-| `postRunScript.arguments` | string         | `""`        | Arguments to pass to the post-run script                 |
+| Option                     | Type           | Default     | Description                                                                     |
+| -------------------------- | -------------- | ----------- | ------------------------------------------------------------------------------- |
+| `enable`                   | bool           | `false`     | Enable this data source                                                         |
+| `user`                     | string         | `"burenix"` | User the service runs as                                                        |
+| `group`                    | string         | `"burenix"` | Group the service runs as                                                       |
+| `createUser`               | bool           | `false`     | Create the service user automatically; disable if the user is managed elsewhere |
+| `extraGroups`              | list of string | `[]`        | Additional groups for the service user; ignored when `user` is `"root"`         |
+| `sourceDirs`               | list of string | `[]`        | Paths to back up                                                                |
+| `targetDirs`               | list of string | `[]`        | Destination paths to write backups to                                           |
+| `tempDir`                  | string         | `"/tmp"`    | Staging directory used during compression                                       |
+| `backupTime`               | string or null | `null`      | Systemd `OnCalendar` schedule; `null` disables the timer                        |
+| `useSSH`                   | bool           | `false`     | Use `scp` instead of `cp` for transfers                                         |
+| `usePigz`                  | bool           | `false`     | Use pigz (multi-threaded gzip) for compression                                  |
+| `checksum`                 | bool           | `false`     | Generate a SHA-256 checksum file alongside the archive                          |
+| `encryption.enable`        | bool           | `false`     | Enable GPG encryption                                                           |
+| `encryption.keyPath`       | string or null | `null`      | Path to the GPG passphrase file for this source                                 |
+| `rollover.enable`          | bool           | `false`     | Enable automatic pruning of old archives                                        |
+| `rollover.intervalDays`    | number         | `14`        | Delete archives older than this many days                                       |
+| `preRunScript.enable`      | bool           | `false`     | Run a script before the job starts                                              |
+| `preRunScript.file`        | path or null   | `null`      | Path to the pre-run script                                                      |
+| `preRunScript.arguments`   | string         | `""`        | Arguments to pass to the pre-run script                                         |
+| `preRunScript.exitOnFail`  | bool           | `false`     | Abort the job if the pre-run script exits with a non-zero code                  |
+| `postRunScript.enable`     | bool           | `false`     | Run a script after the job completes                                            |
+| `postRunScript.file`       | path or null   | `null`      | Path to the post-run script                                                     |
+| `postRunScript.arguments`  | string         | `""`        | Arguments to pass to the post-run script                                        |
+| `postRunScript.exitOnFail` | bool           | `false`     | Abort the job if the post-run script exits with a non-zero code                 |
 
 ---
 

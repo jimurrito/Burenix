@@ -28,7 +28,20 @@ in
   config = mkIf (burenix-nixops.enable) {
     #
     # Group for burenix
-    users.groups.burenix = { };
+    users = {
+      groups.burenix = { };
+      users = buMapper (
+        _: buConf:
+        mkIf (buConf.user != "root" && buConf.createUser) {
+          ${buConf.user} = {
+            enable = buConf.enable;
+            group = buConf.group;
+            extraGroups = buConf.extragroups;
+            isSystemUser = true;
+          };
+        }
+      );
+    };
     #
     #
     environment = {
@@ -42,7 +55,6 @@ in
           buKeyPath = optionalString (buConf.encryption.enable) buConf.encryption.keyPath;
         in
         {
-          #
           # easily accessible configs for the burenix-cli
           "burenix/conf/${buName}.json" = {
             # readable only by owner and group for the backup
@@ -80,11 +92,12 @@ in
           openssh # for scp
           gnupg # for gpg
         ];
+        exitOnFail = i: if i then " || exit 1" else "";
         # pre/post script
         mkScript =
           scriptConf:
           (mkIf (scriptConf.enable) ''
-            ${getExe pkgs.bash} ${scriptConf.file} ${scriptConf.arguments}
+            ${getExe pkgs.bash} ${scriptConf.file} ${scriptConf.arguments} ${exitOnFail scriptConf.exitOnFail}
           '');
         # job scripts
         mkScriptExe =
