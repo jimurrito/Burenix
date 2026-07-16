@@ -23,8 +23,8 @@ logic(){
     #
     # Get snapshots from targets
     for targ in ${targets[@]}; do
-        if [[ $ctr == 0 ]]; then prime="[*]"; else prime=""; fi
-        echo -e "Backup Target: [ ${targ} ] ${prime}"
+        if [[ $ctr == 0 ]]; then prime="( Primary )"; else prime=""; fi
+        echo -e "Backup Target: [${targ}] ${prime}"
         #
         snaps=($(ls ${targ}/burenix-${name}-*.tar.gz* 2> /dev/null))
         if [[ ${#snaps[@]} == 0 ]]; then
@@ -40,8 +40,11 @@ logic(){
             # check if checksum file exists for this
             baseName=$(basename ${snap})
             if [[ $(ls "${targ}/${baseName%.tar*}.checksum" 2> /dev/null) ]]; then check="[C]"; else check=""; fi
+            if [[ "$baseName" =~ .gpg ]]; then enc="[E]"; else enc=""; fi
             if [[ $ctrN == 0 && $ctr == 0 ]]; then prime="[*]"; ctrN=1; else prime=""; fi
-            echo "  -> ${baseName} ${check}${prime}"
+            rSuff=${baseName%.tar*}
+            rPref=${rSuff#"burenix-${name}-"}
+            echo "  -> ${rPref} ${enc}${check} ${prime}"
         done
         # remove prime tag from the next
         ctr=1;
@@ -76,4 +79,7 @@ else
     done
 fi
 
-echo -e "\n [*] = Primary/Used for Restores \n [C] = Uses Checksum"
+echo ""
+echo "  [*]  = Used for Automatic Restores"
+echo "  [C]  = Uses SHA256 Checksum "
+echo "  [E]  = Uses GPG Encryption"
