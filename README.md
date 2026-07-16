@@ -48,8 +48,7 @@ Import the module and configure a data source:
   imports = [ inputs.burenix.nixosModules.default ];
 
   services.burenix = {
-    enable  = true;
-    keyPath = "/root/backup-key";   # path to GPG passphrase file
+    enable = true;
 
     backups.<name> = {
       enable     = true;
@@ -76,7 +75,7 @@ echo "your-passphrase" > /root/backup-key
 chmod 400 /root/backup-key
 ```
 
-The top-level `keyPath` is used by default for all data sources. Override it per data source with `encryption.keyPath`.
+Set `encryption.keyPath` per data source to point to the passphrase file.
 
 ### Manual jobs via CLI
 
@@ -95,8 +94,7 @@ burenix-cli show <data-source>      # print config for one source
 
 ```nix
 services.burenix = {
-  enable  = true;
-  keyPath = "/root/backup-key";
+  enable = true;
 
   backups.postgres = {
     enable     = true;
@@ -108,7 +106,10 @@ services.burenix = {
     backupTime = "daily, 02:00:00";
     usePigz    = true;
 
-    encryption.enable = true;
+    encryption = {
+      enable  = true;
+      keyPath = "/root/backup-key";
+    };
 
     rollover = {
       enable      = true;
@@ -162,10 +163,9 @@ services.burenix = {
 
 ### Top-level (`services.burenix`)
 
-| Option    | Type   | Default              | Description                              |
-|-----------|--------|----------------------|------------------------------------------|
-| `enable`  | bool   | `false`              | Enable the burenix module                |
-| `keyPath` | string | `"/root/backup-key"` | Path to the GPG passphrase file          |
+| Option   | Type | Default | Description              |
+|----------|------|---------|--------------------------|
+| `enable` | bool | `false` | Enable the burenix module |
 
 ### Per data source (`services.burenix.backups.<name>`)
 
@@ -182,7 +182,7 @@ services.burenix = {
 | `usePigz`                   | bool           | `false`    | Use pigz (multi-threaded gzip) for compression           |
 | `checksum`                  | bool           | `false`    | Generate a SHA-256 checksum file alongside the archive   |
 | `encryption.enable`         | bool           | `false`    | Enable GPG encryption                                    |
-| `encryption.keyPath`        | string or null | `null`     | Per-source key override; falls back to top-level keyPath |
+| `encryption.keyPath`        | string or null | `null`     | Path to the GPG passphrase file for this source          |
 | `rollover.enable`           | bool           | `false`    | Enable automatic pruning of old archives                 |
 | `rollover.intervalDays`     | number         | `14`       | Delete archives older than this many days                |
 | `preRunScript.enable`       | bool           | `false`    | Run a script before the job starts                       |
