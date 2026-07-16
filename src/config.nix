@@ -14,9 +14,6 @@ let
     logic:
     (mkMerge (mapAttrsToList (buName: buConf: (mkIf buConf.enable (logic buName buConf))) backups));
   #
-  # If input value is null, root password file will be used.
-  mkKeyPath = i: (if (isString i) then i else burenix-nixops.keyPath);
-  #
   #
 in
 {
@@ -42,7 +39,7 @@ in
         buName: buConf:
         let
           # determines keypath
-          buKeyPath = mkKeyPath buConf.encryption.keyPath;
+          buKeyPath = optionalString (buConf.encryption.enable) buConf.encryption.keyPath;
         in
         {
           #
@@ -63,7 +60,7 @@ in
               backupTime = buConf.backupTime;
               useSSH = buConf.useSSH;
               usePigz = buConf.usePigz;
-              keyPath = optionalString (buConf.encryption.enable) buKeyPath;
+              keyPath = buKeyPath;
               checksum = buConf.checksum;
             };
           };
@@ -104,7 +101,7 @@ in
         buName: buConf:
         let
           # determines keypath
-          buKeyPath = mkKeyPath buConf.encryption.keyPath;
+          buKeyPath = optionalString (buConf.encryption.enable) buConf.encryption.keyPath;
         in
         {
           #
@@ -154,21 +151,37 @@ in
           #
           #
           # Backup data source init
-          services."burenix-${buName}-init" = {
-            enable = true;
-            description = "Target creator for Buenix backup [${buName}]";
-            after = [ "network.target" ];
-            wantedBy = [ "multi-user.target" ];
-            path = with pkgs; [ coreutils ];
-            serviceConfig = {
-              User = buConf.user;
-              Group = buConf.group;
-              Type = "oneshot";
-              ExecStart = ''
+          services."burenix-${buName}-init" =
+            let
+              script = ''
+                #!/usr/bin/env bash
+                # Makes destination directories
                 ${pkgs.coreutils}/bin/mkdir -p ${(join " " buConf.targetDirs)}
+                ${pkgs.coreutils}/bin/chown -Rv ${buConf.user}:${buConf.group} ${(join " " buConf.targetDirs)}
               '';
+              exe = pkgs.runCommand "${buName}-init" { } ''
+                echo -e ${script} > $out
+                chmod 0555 $out
+              '';
+            in
+            {
+              enable = true;
+              description = "Target creator for Buenix backup [${buName}]";
+              after = [ "network.target" ];
+              wantedBy = [ "multi-user.target" ];
+              path = with pkgs; [
+                coreutils
+                bash
+              ];
+              serviceConfig = {
+                User = "root";
+                Group = "root";
+                Type = "oneshot";
+                ExecStart = ''
+                  ${exe}
+                '';
+              };
             };
-          };
           #
           #
           # Backup restore service(s)

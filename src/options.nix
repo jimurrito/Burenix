@@ -21,12 +21,6 @@ in
   options.services.burenix = {
     default = { };
     enable = mkEnableOption "The burenix module entirely";
-    # Compression Key file path
-    keyPath = mkOption {
-      type = types.str;
-      default = "/root/backup-key";
-      description = "Key used to encrypt the compressed files.";
-    };
     # Backup definitions
     # Each definition is considered a ''data source''
     backups = mkOption {
@@ -120,7 +114,7 @@ in
             keyPath = mkOption {
               type = types.nullOr types.str;
               default = null;
-              description = "Overrides the encryption 'keyPath' set in the parent configuration.";
+              description = "Path to the file containing the key that will be used by GPG";
             };
           };
         };
